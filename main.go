@@ -2,25 +2,43 @@ package main
 
 import (
 	"archive/zip"
-	"fmt"
+	"errors"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
+	"strconv"
+	"time"
 )
 
 func main() {
-	var directoryToZip string
-	if len(os.Args) > 1 {
-		directoryToZip = os.Args[1]
-	} else {
-		directoryToZip = "default"
+	if len(os.Args) < 4 {
+		panic(errors.New("wrong number of arguments: <directory to zip> <directory to save to> <frequency in minutes>"))
 	}
-	output := "backup.zip"
-	err := zipFiles(directoryToZip, output)
+	thingToZip := os.Args[1]
+	saveDirectory := os.Args[2]
+	frequencyArg, err := strconv.Atoi(os.Args[3])
 	if err != nil {
-		panic(err)
+		panic(errors.New("frequency should be an integer"))
 	}
-	fmt.Println("Zipped file: ", output)
+	frequency := time.Duration(frequencyArg) * time.Minute
+	// note(ryan): this time format isn't random gibberish. Go just uses a weird formatting system.
+	// we are assuming these will be unique so we don't worry about overwriting
+	log.Println("starting")
+	log.Println("saving \"" + thingToZip + "\" to directory \"" + saveDirectory + "\" every " + os.Args[3] + " minute(s)")
+	timer := time.NewTimer(frequency)
+	for {
+		<-timer.C
+		timer.Reset(frequency)
+		timestamp := time.Now().Format("02012006030405")
+		outputName := saveDirectory + "autobackup" + timestamp + ".zip"
+		err := zipFiles(thingToZip, outputName)
+		if err != nil {
+			log.Println("can't save file: " + err.Error())
+			continue
+		}
+		log.Println("saved file to: " + outputName)
+	}
 }
 
 func zipFiles(directoryToZip, output string) error {
@@ -32,7 +50,7 @@ func zipFiles(directoryToZip, output string) error {
 	zipWriter := zip.NewWriter(newZipFile)
 	defer zipWriter.Close()
 	filepath.Walk(directoryToZip, func(path string, info os.FileInfo, err error) error {
-		fmt.Println("Found ", path)
+		log.Println("Found ", path)
 		if info.IsDir() {
 			return nil
 		}
