@@ -18,7 +18,7 @@ func main() {
 	thingToZip := os.Args[1]
 	saveDirectory := os.Args[2]
 	frequencyArg, err := strconv.Atoi(os.Args[3])
-	if err != nil {
+	if err != nil || frequencyArg <= 0 {
 		panic(errors.New("frequency should be an integer"))
 	}
 	frequency := time.Duration(frequencyArg) * time.Minute
