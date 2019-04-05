@@ -28,8 +28,6 @@ func main() {
 	log.Println("saving \"" + thingToZip + "\" to directory \"" + saveDirectory + "\" every " + os.Args[3] + " minute(s)")
 	timer := time.NewTimer(frequency)
 	for {
-		<-timer.C
-		timer.Reset(frequency)
 		timestamp := time.Now().Format("02012006030405")
 		outputName := saveDirectory + "autobackup" + timestamp + ".zip"
 		err := zipFiles(thingToZip, outputName)
@@ -38,6 +36,8 @@ func main() {
 			continue
 		}
 		log.Println("saved file to: " + outputName)
+		<-timer.C
+		timer.Reset(frequency)
 	}
 }
 
