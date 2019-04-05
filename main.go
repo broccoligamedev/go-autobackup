@@ -19,7 +19,7 @@ func main() {
 	saveDirectory := os.Args[2]
 	frequencyArg, err := strconv.Atoi(os.Args[3])
 	if err != nil || frequencyArg <= 0 {
-		panic(errors.New("frequency should be an integer"))
+		panic(errors.New("frequency should be an integer greater than 0"))
 	}
 	frequency := time.Duration(frequencyArg) * time.Minute
 	// note(ryan): this time format isn't random gibberish. Go just uses a weird formatting system.
