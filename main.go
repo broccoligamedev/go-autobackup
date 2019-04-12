@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -17,6 +18,14 @@ func main() {
 	}
 	thingToZip := os.Args[1]
 	saveDirectory := os.Args[2]
+	// note(ryan): the .zip specification requires directories use forward slashes, but windows uses backslashes.
+	// this creates an issue where extracting files on linux leads to file names like "these\should\be\directories\test.txt"
+	// instead of actual directories.
+	saveDirectory = strings.ReplaceAll(saveDirectory, "\\", "/")
+	// note(ryan): if our last character isn't a forward slash then we need to insert you to get the correct path
+	if saveDirectory[len(saveDirectory)-1] != '/' {
+		saveDirectory = saveDirectory + "/"
+	}
 	frequencyArg, err := strconv.Atoi(os.Args[3])
 	if err != nil || frequencyArg <= 0 {
 		panic(errors.New("frequency should be an integer greater than 0"))
@@ -27,15 +36,19 @@ func main() {
 	log.Println("starting")
 	log.Println("saving \"" + thingToZip + "\" to directory \"" + saveDirectory + "\" every " + os.Args[3] + " minute(s)")
 	timer := time.NewTimer(frequency)
+	fileCount := 0
+	errorCount := 0
 	for {
 		timestamp := time.Now().Format("02012006030405")
 		outputName := saveDirectory + "autobackup" + timestamp + ".zip"
 		err := zipFiles(thingToZip, outputName)
+		fileCount++
 		if err != nil {
-			log.Println("can't save file: " + err.Error())
+			errorCount++
 			continue
 		}
 		log.Println("saved file to: " + outputName)
+		log.Println(strconv.Itoa(errorCount) + " error(s) out of " + strconv.Itoa(fileCount) + " files")
 		<-timer.C
 		timer.Reset(frequency)
 	}
@@ -50,7 +63,6 @@ func zipFiles(directoryToZip, output string) error {
 	zipWriter := zip.NewWriter(newZipFile)
 	defer zipWriter.Close()
 	filepath.Walk(directoryToZip, func(path string, info os.FileInfo, err error) error {
-		log.Println("Found ", path)
 		if info.IsDir() {
 			return nil
 		}
@@ -63,7 +75,7 @@ func zipFiles(directoryToZip, output string) error {
 		if err != nil {
 			return err
 		}
-		header.Name = path
+		header.Name = strings.ReplaceAll(path, "\\", "/")
 		header.Method = zip.Deflate
 		writer, err := zipWriter.CreateHeader(header)
 		if err != nil {
